@@ -4,7 +4,7 @@ from functools import wraps
 
 
 #: Defines the version of the `normalazy` library.
-__version__ = "0.0.1"
+__version__ = "0.0.2dev"
 
 
 def iffnotnull(func):
