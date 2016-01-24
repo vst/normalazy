@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 from functools import wraps
 
+from six import add_metaclass
 
 #: Defines the version of the `normalazy` library.
 __version__ = "0.0.2dev"
@@ -92,10 +93,6 @@ def as_number(x):
     Decimal('1')
     >>> as_number(" 1 ")
     Decimal('1')
-    >>> as_number(" a ")
-    Traceback (most recent call last):
-    ...
-    decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
     """
     return Decimal(as_string(x))
 
@@ -272,7 +269,7 @@ class Value:
             return self.payload.get(item)
 
         ## Nope, escalate:
-        return super().__getattr__(item)
+        return super(Value, self).__getattr__(item)
 
     @classmethod
     def success(cls, value=None, message=None, **kwargs):
@@ -311,7 +308,7 @@ class Value:
         return cls(value=value, message=message, status=cls.Status.Error, **kwargs)
 
 
-class Field:
+class Field(object):
     """
     Provides a concrete mapper field.
 
@@ -486,7 +483,7 @@ class KeyField(Field):
         :param key: The key of the property of the record to be mapped.
         :param **kwargs: Keyword arguments to `Field`.
         """
-        super().__init__(**kwargs)
+        super(KeyField, self).__init__(**kwargs)
         self.__key = key
 
     @property
@@ -503,7 +500,7 @@ class KeyField(Field):
         :param name: The new name of the field.
         """
         ## Call the super:
-        super().rename(name)
+        super(KeyField, self).rename(name)
 
         ## If the key is None, set it with joy:
         if self.__key is None:
@@ -561,9 +558,9 @@ class ChoiceKeyField(KeyField):
     Decimal('1')
     """
 
-    def __init__(self, *args, choices=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         ## Choices?
-        choices = choices or {}
+        choices = kwargs.pop("choices", {})
 
         ## Get the function:
         functmp = kwargs.pop("func", None)
@@ -578,7 +575,7 @@ class ChoiceKeyField(KeyField):
         kwargs["func"] = func
 
         ## OK, proceed as usual:
-        super().__init__(*args, **kwargs)
+        super(ChoiceKeyField, self).__init__(*args, **kwargs)
 
 
 class RecordMetaclass(type):
@@ -596,7 +593,7 @@ class RecordMetaclass(type):
                 field.rename(name)
 
         ## Get the record class as usual:
-        record_cls = super().__new__(mcs, name, bases, attrs, **kwargs)
+        record_cls = super(RecordMetaclass, mcs).__new__(mcs, name, bases, attrs, **kwargs)
 
         ## Now, process the fields:
         record_cls._fields.update(fields)
@@ -605,7 +602,8 @@ class RecordMetaclass(type):
         return record_cls
 
 
-class Record(metaclass=RecordMetaclass):
+@add_metaclass(RecordMetaclass)
+class Record(object):
     """
     Provides a record normalizer base class.
 
