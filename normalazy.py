@@ -670,7 +670,8 @@ class Record(object):
     OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)]))])
 
     >>> record2.as_dict(detailed=True)
-    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)])), ('b', OrderedDict([('value', 'Iki'), ('status', 1), ('message', None)]))])
+    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)])), \
+('b', OrderedDict([('value', 'Iki'), ('status', 1), ('message', None)]))])
 
     We can also create a new record from an existing record or dictionary:
 
@@ -708,15 +709,6 @@ class Record(object):
     'Bir'
     """
     ## TODO: [Improvement] Rename _fields -> __fields, _values -> __value
-    ## TODO: [Improvement] Implement hasval()
-    ## TODO: [Improvement] Implement getval()
-    ## TODO: [Improvement] Implement setval()
-    ## TODO: [Improvement] Implement delval()
-    ## TODO: [Improvement] Implement allval()
-    ## TODO: [Improvement] Implement noneval()
-    ## TODO: [Improvement] Implement is_val_success()
-    ## TODO: [Improvement] Implement is_val_warning()
-    ## TODO: [Improvement] Implement is_val_error()
 
     def __init__(self, record):
         ## Save the record slot:
@@ -733,34 +725,132 @@ class Record(object):
         :param item: The name of the attribute, in particular the field name.
         :return: The value (value attribute of the Value).
         """
-        ## Do we have such a value yet?
-        if item in self._values:
-            ## Yes, return the value slot of the value:
-            return self._values.get(item).value
+        return self.getval(item).value
 
-        ## Do we have such a field?
-        if item not in self._fields:
-            ## Nope. raise error:
-            raise AttributeError("Item {} is not in fields".format(item))
-
-        ## Compute the value:
-        self._values[item] = self._fields.get(item).map(self, self.__record)
-
-        ## Done, return the value slot of the Value instance:
-        return self._values[item].value
-
-    def get_value(self, field):
+    def hasval(self, name):
         """
-        Returns the boxed value of a field.
+        Indicates if we have a value slot called ``name``.
 
-        :param field: The field to be retrieved.
-        :return: A value instance.
+        :param name: The name of the value slot.
+        :return: ``True`` if we have a value slot called ``name``, ``False`` otherwise.
         """
-        try:
-            getattr(self, field)
-            return self._values[field]
-        except ValueError:
-            return Value.error(message="ValueError encountered.")
+        return name in self._fields
+
+    def getval(self, name):
+        """
+        Returns the value slot identified by the ``name``.
+
+        :param name: The name of the value slot.
+        :return: The value slot, ie. the boxed value instance of class :class:`Value`.
+        """
+        ## Did we compute this before?
+        if name in self._values:
+            ## Yes, return the value slot:
+            return self._values.get(name)
+
+        ## Do we have such a value slot?
+        if not self.hasval(name):
+            raise AttributeError("Record does not have value slot named '{}'".format(name))
+
+        ## Apparently, we have never computed the value. Let's compute the value slot and return:
+        return self.setval(name, self._fields.get(name).map(self, self.__record))
+
+    def setval(self, name, value, status=None, message=None):
+        """
+        Sets a value to the value slot.
+
+        :param name: The name of the value slot.
+        :param value: The value to be set (Either a Python value or a :class:`Value` instance.)
+        :param status: The status of the value slot if any.
+        :param message: The message of the value slot if any.
+        :return: The :class:`Value` instance set.
+        """
+        ## Do we have such a value slot?
+        if not self.hasval(name):
+            raise AttributeError("Record does not have value slot named '{}'".format(name))
+
+        ## Create a value instance:
+        if isinstance(value, Value):
+            value = Value(value=value.value, status=status or value.status, message=message or value.message)
+        else:
+            value = Value(value=value, status=status or Value.Status.Success, message=message)
+
+        ## Save the slot:
+        self._values[name] = value
+
+        ## Done, return the value set:
+        return value
+
+    def delval(self, name):
+        """
+        Deletes a stored value.
+
+        :param name: The name of the value.
+        """
+        if name in self._values:
+            del self._values[name]
+
+    def allvals(self):
+        """
+        Returns all the value slots.
+
+        :return: A dictionary of all computed value slots.
+        """
+        return {field: self.getval(field) for field in self._fields}
+
+    def val_none(self, name):
+        """
+        Indicates if the value is None.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is None.
+        """
+        return self.getval(name).value is None
+
+    def val_blank(self, name):
+        """
+        Indicates if the value is blank.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is blank.
+        """
+        return self.getval(name).value == ""
+
+    def val_some(self, name):
+        """
+        Indicates if the value is something other than None or blank.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is something other than None or blank.
+        """
+        return not self.val_none(name) and not self.val_blank(name)
+
+    def val_success(self, name):
+        """
+        Indicates if the value is success.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is success.
+        """
+        return self.getval(name).status == Value.Status.Success
+
+    def val_warning(self, name):
+        """
+        Indicates if the value is warning.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is warning.
+        """
+        return self.getval(name).status == Value.Status.Warning
+
+    def val_error(self, name):
+        """
+        Indicates if the value is error.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is error.
+        """
+        return self.getval(name).status == Value.Status.Error
 
     def as_dict(self, detailed=False):
         """
@@ -811,5 +901,3 @@ class Record(object):
 
         ## Done, create the new record and return:
         return cls(base)
-
-
