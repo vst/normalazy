@@ -654,6 +654,16 @@ class Record(object):
     >>> record2.b
     'Iki'
     """
+    ## TODO: [Improvement] Rename _fields -> __fields, _values -> __value
+    ## TODO: [Improvement] Implement hasval()
+    ## TODO: [Improvement] Implement getval()
+    ## TODO: [Improvement] Implement setval()
+    ## TODO: [Improvement] Implement delval()
+    ## TODO: [Improvement] Implement allval()
+    ## TODO: [Improvement] Implement noneval()
+    ## TODO: [Improvement] Implement is_val_success()
+    ## TODO: [Improvement] Implement is_val_warning()
+    ## TODO: [Improvement] Implement is_val_error()
 
     def __init__(self, record):
         ## Save the record slot:
