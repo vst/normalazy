@@ -1,5 +1,20 @@
-VERS: 2016-01-20 ------- release/0.0.1
+VERS: 2016-03-30 ------- release/0.0.2
 
+    * 2016-03-30 05fcb28 [release] Version bumped to 0.0.2 (vst@vsthost.com)
+    * 2016-03-30 49d1bb8 [docs] README updated (vst@vsthost.com)
+    * 2016-03-30 25b1dd7 [docs] Initiated documentation (vst@vsthost.com)
+    * 2016-03-30 3c4f9e5 [feature] Allowing additional payload to setval method. (vst@vsthost.com)
+    * 2016-03-30 fc803e3 [feature] Implemented convenience methods on the Record (vst@vsthost.com)
+    * 2016-03-30 814ad3a [feature] Added get_value, as_dict and new methods on Record class/instances (vst@vsthost.com)
+    * 2016-03-30 20dac1a [chore] Added some TODOs into the module (vst@vsthost.com)
+    * 2016-03-30 277a43f [bugfix] _fields class attribute is not shared across different Record classes (vst@vsthost.com)
+    * 2016-03-30 8fd1a9f [feature] Now checking for empty string on cast methods (vst@vsthost.com)
+    * 2016-01-24 71f0a3b [feature] Supporting both Python 2 (2.7) and 3 (3.5) (vst@vsthost.com)
+    * 2016-01-20 93eebeb [chore] Development version bumped to 0.0.2dev (vst@vsthost.com)
+
+VERS: 2016-01-20 3b41e7f release/0.0.1 (vst@vsthost.com)
+
+    * 2016-01-20 2d8f344 [release] ChangeLog updated (vst@vsthost.com)
     * 2016-01-20 8eb327e [release] Version bumped to 0.0.1 (vst@vsthost.com)
     * 2016-01-20 3593241 [chore] Initial code commit (vst@vsthost.com)
     * 2016-01-18 e182b93 Initial commit (vst@vsthost.com)
