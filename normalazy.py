@@ -26,6 +26,25 @@ def iffnotnull(func):
     return wrapper
 
 
+def iffnotblank(func):
+    """
+    Wraps a function, returns None if the first argument is empty, invokes the method otherwise.
+
+    :param func: The function to be wrapped.
+    :return: Empty string or the result of the function.
+
+    >>> test1 = iffnotblank(lambda x: x)
+    >>> test1("")
+    ''
+    >>> test1(1)
+    1
+    """
+    @wraps(func)
+    def wrapper(value, *args, **kwargs):
+        return value if value == "" else func(value, *args, **kwargs)
+    return wrapper
+
+
 def identity(x):
     """
     Defines an identity function.
@@ -65,7 +84,7 @@ def as_factor(x):
     Converts the value to a factor string.
 
     :param x: Value.
-    :return: Trimmer, up-cased string value.
+    :return: Trimmed, up-cased string value.
 
     >>> as_factor(None)
     >>> as_factor("")
@@ -79,6 +98,7 @@ def as_factor(x):
 
 
 @iffnotnull
+@iffnotblank
 def as_number(x):
     """
     Converts the value to a decimal value.
@@ -97,7 +117,6 @@ def as_number(x):
     return Decimal(as_string(x))
 
 
-@iffnotnull
 def as_boolean(x, predicate=None):
     """
     Converts the value to a boolean value.
@@ -107,6 +126,11 @@ def as_boolean(x, predicate=None):
     :return: Boolean
 
     >>> as_boolean(None)
+    False
+    >>> as_boolean("")
+    False
+    >>> as_boolean(" ")
+    True
     >>> as_boolean(1)
     True
     >>> as_boolean(0)
@@ -132,6 +156,7 @@ def as_boolean(x, predicate=None):
 
 
 @iffnotnull
+@iffnotblank
 def as_datetime(x, fmt=None):
     """
     Converts the value to a datetime value.
@@ -141,6 +166,8 @@ def as_datetime(x, fmt=None):
     :return: A datetime.date instance.
 
     >>> as_datetime(None)
+    >>> as_datetime("")
+    ''
     >>> as_datetime("2015-01-01 00:00:00")
     datetime.datetime(2015, 1, 1, 0, 0)
     >>> as_datetime("2015-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
@@ -152,6 +179,7 @@ def as_datetime(x, fmt=None):
 
 
 @iffnotnull
+@iffnotblank
 def as_date(x, fmt=None):
     """
     Converts the value to a date value.
@@ -161,6 +189,8 @@ def as_date(x, fmt=None):
     :return: A datetime.date instance.
 
     >>> as_date(None)
+    >>> as_date('')
+    ''
     >>> as_date("2015-01-01")
     datetime.date(2015, 1, 1)
     >>> as_date("Date: 2015-01-01", "Date: %Y-%m-%d")
