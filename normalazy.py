@@ -1,4 +1,6 @@
+import copy
 import datetime
+from collections import OrderedDict
 from decimal import Decimal
 from functools import wraps
 
@@ -653,6 +655,57 @@ class Record(object):
     1
     >>> record2.b
     'Iki'
+
+    We can get the dictionary representation of records:
+
+    >>> record1.as_dict()
+    OrderedDict([('a', 1)])
+
+    >>> record2.as_dict()
+    OrderedDict([('a', 1), ('b', 'Iki')])
+
+    Or detailed:
+
+    >>> record1.as_dict(detailed=True)
+    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)]))])
+
+    >>> record2.as_dict(detailed=True)
+    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)])), ('b', OrderedDict([('value', 'Iki'), ('status', 1), ('message', None)]))])
+
+    We can also create a new record from an existing record or dictionary:
+
+    >>> class Test3Record(Record):
+    ...     a = KeyField()
+    ...     b = KeyField()
+    >>> record3 = Test3Record.new(record2)
+    >>> record3.a
+    1
+    >>> record3.b
+    'Iki'
+    >>> record3.a == record2.a
+    True
+    >>> record3.b == record2.b
+    True
+
+    With dictionary:
+
+    >>> record4 = Test3Record.new({"a": 1, "b": "Iki"})
+    >>> record4.a
+    1
+    >>> record4.b
+    'Iki'
+    >>> record4.a == record2.a
+    True
+    >>> record4.b == record2.b
+    True
+
+    Or even override some fields:
+
+    >>> record5 = Test3Record.new(record3, b="Bir")
+    >>> record5.a
+    1
+    >>> record5.b
+    'Bir'
     """
     ## TODO: [Improvement] Rename _fields -> __fields, _values -> __value
     ## TODO: [Improvement] Implement hasval()
@@ -695,3 +748,68 @@ class Record(object):
 
         ## Done, return the value slot of the Value instance:
         return self._values[item].value
+
+    def get_value(self, field):
+        """
+        Returns the boxed value of a field.
+
+        :param field: The field to be retrieved.
+        :return: A value instance.
+        """
+        try:
+            getattr(self, field)
+            return self._values[field]
+        except ValueError:
+            return Value.error(message="ValueError encountered.")
+
+    def as_dict(self, detailed=False):
+        """
+        Provides a JSON representation of the record instance.
+
+        :param detailed: Indicates if we need detailed result, ie. with status and message for each field.
+        :return: A JSON representation of the record instance.
+        """
+        ## We have the fields and values saved in the `_fields` and `_values` attributes respectively. We will
+        ## simply iterate over these fields and their respective values.
+        ##
+        ## Let's start with defining the data dictionary:
+        retval = OrderedDict([])
+
+        ## Iterate over fields and get their values:
+        for key in sorted(self._fields):
+            ## Add the field to return value:
+            retval[key] = getattr(self, key, None)
+
+            ## If detailed, override with real Value instance:
+            if detailed:
+                ## Get the value:
+                value = self._values.get(key, None)
+
+                ## Add the value:
+                retval[key] = OrderedDict([("value", str(value.value)),
+                                           ("status", value.status),
+                                           ("message", value.message)])
+
+        ## Done, return the value:
+        return retval
+
+    @classmethod
+    def new(cls, record, **kwargs):
+        """
+        Creates a new record from the provided record or dictionary and overriding values from the provided additional
+        named arguments.
+
+        :param record: The record or dictionary to be copied from.
+        :param kwargs: Named arguments to override.
+        :return: New record.
+        """
+        ## First of all, get the record as value dictionary:
+        base = copy.deepcopy(record.as_dict() if isinstance(record, Record) else record)
+
+        ## Update the dictionary:
+        base.update(kwargs)
+
+        ## Done, create the new record and return:
+        return cls(base)
+
+
