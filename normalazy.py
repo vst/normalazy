@@ -755,7 +755,7 @@ class Record(object):
         ## Apparently, we have never computed the value. Let's compute the value slot and return:
         return self.setval(name, self._fields.get(name).map(self, self.__record))
 
-    def setval(self, name, value, status=None, message=None):
+    def setval(self, name, value, status=None, message=None, **kwargs):
         """
         Sets a value to the value slot.
 
@@ -763,6 +763,7 @@ class Record(object):
         :param value: The value to be set (Either a Python value or a :class:`Value` instance.)
         :param status: The status of the value slot if any.
         :param message: The message of the value slot if any.
+        :param kwargs: Additional named values as payload to value.
         :return: The :class:`Value` instance set.
         """
         ## Do we have such a value slot?
@@ -771,9 +772,16 @@ class Record(object):
 
         ## Create a value instance:
         if isinstance(value, Value):
-            value = Value(value=value.value, status=status or value.status, message=message or value.message)
+            ## Get a copy of payload if any:
+            payload = copy.deepcopy(value.payload)
+
+            ## Update the payload with kwargs:
+            payload.update(kwargs.copy())
+
+            ## Create the new value:
+            value = Value(value=value.value, status=status or value.status, message=message or value.message, **payload)
         else:
-            value = Value(value=value, status=status or Value.Status.Success, message=message)
+            value = Value(value=value, status=status or Value.Status.Success, message=message, **kwargs)
 
         ## Save the slot:
         self._values[name] = value
