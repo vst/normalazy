@@ -625,6 +625,9 @@ class RecordMetaclass(type):
         ## Get the record class as usual:
         record_cls = super(RecordMetaclass, mcs).__new__(mcs, name, bases, attrs, **kwargs)
 
+        ## Attach fields to the class:
+        record_cls._fields = {}
+
         ## Now, process the fields:
         record_cls._fields.update(fields)
 
@@ -651,8 +654,6 @@ class Record(object):
     >>> record2.b
     'Iki'
     """
-    #: Defines the fields of the record normalizer.
-    _fields = {}
 
     def __init__(self, record):
         ## Save the record slot:
