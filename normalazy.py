@@ -1,10 +1,13 @@
+import copy
 import datetime
+from collections import OrderedDict
 from decimal import Decimal
 from functools import wraps
 
+from six import add_metaclass
 
 #: Defines the version of the `normalazy` library.
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 
 def iffnotnull(func):
@@ -22,6 +25,25 @@ def iffnotnull(func):
     @wraps(func)
     def wrapper(value, *args, **kwargs):
         return None if value is None else func(value, *args, **kwargs)
+    return wrapper
+
+
+def iffnotblank(func):
+    """
+    Wraps a function, returns None if the first argument is empty, invokes the method otherwise.
+
+    :param func: The function to be wrapped.
+    :return: Empty string or the result of the function.
+
+    >>> test1 = iffnotblank(lambda x: x)
+    >>> test1("")
+    ''
+    >>> test1(1)
+    1
+    """
+    @wraps(func)
+    def wrapper(value, *args, **kwargs):
+        return value if value == "" else func(value, *args, **kwargs)
     return wrapper
 
 
@@ -64,7 +86,7 @@ def as_factor(x):
     Converts the value to a factor string.
 
     :param x: Value.
-    :return: Trimmer, up-cased string value.
+    :return: Trimmed, up-cased string value.
 
     >>> as_factor(None)
     >>> as_factor("")
@@ -78,6 +100,7 @@ def as_factor(x):
 
 
 @iffnotnull
+@iffnotblank
 def as_number(x):
     """
     Converts the value to a decimal value.
@@ -92,15 +115,10 @@ def as_number(x):
     Decimal('1')
     >>> as_number(" 1 ")
     Decimal('1')
-    >>> as_number(" a ")
-    Traceback (most recent call last):
-    ...
-    decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
     """
     return Decimal(as_string(x))
 
 
-@iffnotnull
 def as_boolean(x, predicate=None):
     """
     Converts the value to a boolean value.
@@ -110,6 +128,11 @@ def as_boolean(x, predicate=None):
     :return: Boolean
 
     >>> as_boolean(None)
+    False
+    >>> as_boolean("")
+    False
+    >>> as_boolean(" ")
+    True
     >>> as_boolean(1)
     True
     >>> as_boolean(0)
@@ -135,6 +158,7 @@ def as_boolean(x, predicate=None):
 
 
 @iffnotnull
+@iffnotblank
 def as_datetime(x, fmt=None):
     """
     Converts the value to a datetime value.
@@ -144,6 +168,8 @@ def as_datetime(x, fmt=None):
     :return: A datetime.date instance.
 
     >>> as_datetime(None)
+    >>> as_datetime("")
+    ''
     >>> as_datetime("2015-01-01 00:00:00")
     datetime.datetime(2015, 1, 1, 0, 0)
     >>> as_datetime("2015-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S")
@@ -155,6 +181,7 @@ def as_datetime(x, fmt=None):
 
 
 @iffnotnull
+@iffnotblank
 def as_date(x, fmt=None):
     """
     Converts the value to a date value.
@@ -164,6 +191,8 @@ def as_date(x, fmt=None):
     :return: A datetime.date instance.
 
     >>> as_date(None)
+    >>> as_date('')
+    ''
     >>> as_date("2015-01-01")
     datetime.date(2015, 1, 1)
     >>> as_date("Date: 2015-01-01", "Date: %Y-%m-%d")
@@ -272,7 +301,7 @@ class Value:
             return self.payload.get(item)
 
         ## Nope, escalate:
-        return super().__getattr__(item)
+        return super(Value, self).__getattr__(item)
 
     @classmethod
     def success(cls, value=None, message=None, **kwargs):
@@ -311,7 +340,7 @@ class Value:
         return cls(value=value, message=message, status=cls.Status.Error, **kwargs)
 
 
-class Field:
+class Field(object):
     """
     Provides a concrete mapper field.
 
@@ -486,7 +515,7 @@ class KeyField(Field):
         :param key: The key of the property of the record to be mapped.
         :param **kwargs: Keyword arguments to `Field`.
         """
-        super().__init__(**kwargs)
+        super(KeyField, self).__init__(**kwargs)
         self.__key = key
 
     @property
@@ -503,7 +532,7 @@ class KeyField(Field):
         :param name: The new name of the field.
         """
         ## Call the super:
-        super().rename(name)
+        super(KeyField, self).rename(name)
 
         ## If the key is None, set it with joy:
         if self.__key is None:
@@ -561,9 +590,9 @@ class ChoiceKeyField(KeyField):
     Decimal('1')
     """
 
-    def __init__(self, *args, choices=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         ## Choices?
-        choices = choices or {}
+        choices = kwargs.pop("choices", {})
 
         ## Get the function:
         functmp = kwargs.pop("func", None)
@@ -578,7 +607,7 @@ class ChoiceKeyField(KeyField):
         kwargs["func"] = func
 
         ## OK, proceed as usual:
-        super().__init__(*args, **kwargs)
+        super(ChoiceKeyField, self).__init__(*args, **kwargs)
 
 
 class RecordMetaclass(type):
@@ -596,7 +625,10 @@ class RecordMetaclass(type):
                 field.rename(name)
 
         ## Get the record class as usual:
-        record_cls = super().__new__(mcs, name, bases, attrs, **kwargs)
+        record_cls = super(RecordMetaclass, mcs).__new__(mcs, name, bases, attrs, **kwargs)
+
+        ## Attach fields to the class:
+        record_cls._fields = {}
 
         ## Now, process the fields:
         record_cls._fields.update(fields)
@@ -605,7 +637,8 @@ class RecordMetaclass(type):
         return record_cls
 
 
-class Record(metaclass=RecordMetaclass):
+@add_metaclass(RecordMetaclass)
+class Record(object):
     """
     Provides a record normalizer base class.
 
@@ -622,9 +655,60 @@ class Record(metaclass=RecordMetaclass):
     1
     >>> record2.b
     'Iki'
+
+    We can get the dictionary representation of records:
+
+    >>> record1.as_dict()
+    OrderedDict([('a', 1)])
+
+    >>> record2.as_dict()
+    OrderedDict([('a', 1), ('b', 'Iki')])
+
+    Or detailed:
+
+    >>> record1.as_dict(detailed=True)
+    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)]))])
+
+    >>> record2.as_dict(detailed=True)
+    OrderedDict([('a', OrderedDict([('value', '1'), ('status', 1), ('message', None)])), \
+('b', OrderedDict([('value', 'Iki'), ('status', 1), ('message', None)]))])
+
+    We can also create a new record from an existing record or dictionary:
+
+    >>> class Test3Record(Record):
+    ...     a = KeyField()
+    ...     b = KeyField()
+    >>> record3 = Test3Record.new(record2)
+    >>> record3.a
+    1
+    >>> record3.b
+    'Iki'
+    >>> record3.a == record2.a
+    True
+    >>> record3.b == record2.b
+    True
+
+    With dictionary:
+
+    >>> record4 = Test3Record.new({"a": 1, "b": "Iki"})
+    >>> record4.a
+    1
+    >>> record4.b
+    'Iki'
+    >>> record4.a == record2.a
+    True
+    >>> record4.b == record2.b
+    True
+
+    Or even override some fields:
+
+    >>> record5 = Test3Record.new(record3, b="Bir")
+    >>> record5.a
+    1
+    >>> record5.b
+    'Bir'
     """
-    #: Defines the fields of the record normalizer.
-    _fields = {}
+    ## TODO: [Improvement] Rename _fields -> __fields, _values -> __value
 
     def __init__(self, record):
         ## Save the record slot:
@@ -641,18 +725,187 @@ class Record(metaclass=RecordMetaclass):
         :param item: The name of the attribute, in particular the field name.
         :return: The value (value attribute of the Value).
         """
-        ## Do we have such a value yet?
-        if item in self._values:
-            ## Yes, return the value slot of the value:
-            return self._values.get(item).value
+        return self.getval(item).value
 
-        ## Do we have such a field?
-        if item not in self._fields:
-            ## Nope. raise error:
-            raise AttributeError("Item {} is not in fields".format(item))
+    def hasval(self, name):
+        """
+        Indicates if we have a value slot called ``name``.
 
-        ## Compute the value:
-        self._values[item] = self._fields.get(item).map(self, self.__record)
+        :param name: The name of the value slot.
+        :return: ``True`` if we have a value slot called ``name``, ``False`` otherwise.
+        """
+        return name in self._fields
 
-        ## Done, return the value slot of the Value instance:
-        return self._values[item].value
+    def getval(self, name):
+        """
+        Returns the value slot identified by the ``name``.
+
+        :param name: The name of the value slot.
+        :return: The value slot, ie. the boxed value instance of class :class:`Value`.
+        """
+        ## Did we compute this before?
+        if name in self._values:
+            ## Yes, return the value slot:
+            return self._values.get(name)
+
+        ## Do we have such a value slot?
+        if not self.hasval(name):
+            raise AttributeError("Record does not have value slot named '{}'".format(name))
+
+        ## Apparently, we have never computed the value. Let's compute the value slot and return:
+        return self.setval(name, self._fields.get(name).map(self, self.__record))
+
+    def setval(self, name, value, status=None, message=None, **kwargs):
+        """
+        Sets a value to the value slot.
+
+        :param name: The name of the value slot.
+        :param value: The value to be set (Either a Python value or a :class:`Value` instance.)
+        :param status: The status of the value slot if any.
+        :param message: The message of the value slot if any.
+        :param kwargs: Additional named values as payload to value.
+        :return: The :class:`Value` instance set.
+        """
+        ## Do we have such a value slot?
+        if not self.hasval(name):
+            raise AttributeError("Record does not have value slot named '{}'".format(name))
+
+        ## Create a value instance:
+        if isinstance(value, Value):
+            ## Get a copy of payload if any:
+            payload = copy.deepcopy(value.payload)
+
+            ## Update the payload with kwargs:
+            payload.update(kwargs.copy())
+
+            ## Create the new value:
+            value = Value(value=value.value, status=status or value.status, message=message or value.message, **payload)
+        else:
+            value = Value(value=value, status=status or Value.Status.Success, message=message, **kwargs)
+
+        ## Save the slot:
+        self._values[name] = value
+
+        ## Done, return the value set:
+        return value
+
+    def delval(self, name):
+        """
+        Deletes a stored value.
+
+        :param name: The name of the value.
+        """
+        if name in self._values:
+            del self._values[name]
+
+    def allvals(self):
+        """
+        Returns all the value slots.
+
+        :return: A dictionary of all computed value slots.
+        """
+        return {field: self.getval(field) for field in self._fields}
+
+    def val_none(self, name):
+        """
+        Indicates if the value is None.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is None.
+        """
+        return self.getval(name).value is None
+
+    def val_blank(self, name):
+        """
+        Indicates if the value is blank.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is blank.
+        """
+        return self.getval(name).value == ""
+
+    def val_some(self, name):
+        """
+        Indicates if the value is something other than None or blank.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is something other than None or blank.
+        """
+        return not self.val_none(name) and not self.val_blank(name)
+
+    def val_success(self, name):
+        """
+        Indicates if the value is success.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is success.
+        """
+        return self.getval(name).status == Value.Status.Success
+
+    def val_warning(self, name):
+        """
+        Indicates if the value is warning.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is warning.
+        """
+        return self.getval(name).status == Value.Status.Warning
+
+    def val_error(self, name):
+        """
+        Indicates if the value is error.
+
+        :param name: The name of the value slot.
+        :return: Boolean indicating if the value is error.
+        """
+        return self.getval(name).status == Value.Status.Error
+
+    def as_dict(self, detailed=False):
+        """
+        Provides a JSON representation of the record instance.
+
+        :param detailed: Indicates if we need detailed result, ie. with status and message for each field.
+        :return: A JSON representation of the record instance.
+        """
+        ## We have the fields and values saved in the `_fields` and `_values` attributes respectively. We will
+        ## simply iterate over these fields and their respective values.
+        ##
+        ## Let's start with defining the data dictionary:
+        retval = OrderedDict([])
+
+        ## Iterate over fields and get their values:
+        for key in sorted(self._fields):
+            ## Add the field to return value:
+            retval[key] = getattr(self, key, None)
+
+            ## If detailed, override with real Value instance:
+            if detailed:
+                ## Get the value:
+                value = self._values.get(key, None)
+
+                ## Add the value:
+                retval[key] = OrderedDict([("value", str(value.value)),
+                                           ("status", value.status),
+                                           ("message", value.message)])
+
+        ## Done, return the value:
+        return retval
+
+    @classmethod
+    def new(cls, record, **kwargs):
+        """
+        Creates a new record from the provided record or dictionary and overriding values from the provided additional
+        named arguments.
+
+        :param record: The record or dictionary to be copied from.
+        :param kwargs: Named arguments to override.
+        :return: New record.
+        """
+        ## First of all, get the record as value dictionary:
+        base = copy.deepcopy(record.as_dict() if isinstance(record, Record) else record)
+
+        ## Update the dictionary:
+        base.update(kwargs)
+
+        ## Done, create the new record and return:
+        return cls(base)
