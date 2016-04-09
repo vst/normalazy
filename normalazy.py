@@ -7,7 +7,7 @@ from functools import wraps
 from six import add_metaclass
 
 #: Defines the version of the `normalazy` library.
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 def iffnotnull(func):
@@ -506,17 +506,30 @@ class KeyField(Field):
     Decimal('12')
     >>> field.map(None, dict(a="12")).status == Value.Status.Success
     True
+    >>> field = KeyField(key="a", cast=as_number)
+    >>> field.map(None, dict(a="12")).value
+    Decimal('12')
+    >>> field.map(None, dict(a="12")).status == Value.Status.Success
+    True
+    >>> class Student:
+    ...     def __init__(self, name):
+    ...         self.name = name
+    >>> field = KeyField(key="name")
+    >>> field.map(None, Student("Sinan")).value
+    'Sinan'
     """
 
-    def __init__(self, key=None, **kwargs):
+    def __init__(self, key=None, cast=None, **kwargs):
         """
         Constructs a mapper field with the given argument.
 
         :param key: The key of the property of the record to be mapped.
+        :param cast: The function to be applied to the value.
         :param **kwargs: Keyword arguments to `Field`.
         """
         super(KeyField, self).__init__(**kwargs)
         self.__key = key
+        self.__cast = cast
 
     @property
     def key(self):
@@ -570,9 +583,17 @@ class KeyField(Field):
             value = self.func(instance, record, value)
         else:
             ## The function is not a callable. We assume that it is
-            ## the name of a method of the instance. Apply the
+            ## the name of a method on the instance. Apply the
             ## instance method on the record and the raw value:
             value = getattr(instance, self.func)(record, value)
+
+        ## OK, now we will cast if required:
+        if self.__cast is not None:
+            ## Is it a Value instance?
+            if isinstance(value, Value):
+                value = Value(value=self.__cast(value.value), status=value.status, message=value.message)
+            else:
+                value = self.__cast(value)
 
         ## Done, treat the value and return:
         return self.treat_value(value)
