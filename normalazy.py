@@ -506,6 +506,12 @@ class KeyField(Field):
     Decimal('12')
     >>> field.map(None, dict(a="12")).status == Value.Status.Success
     True
+    >>> class Student:
+    ...     def __init__(self, name):
+    ...         self.name = name
+    >>> field = KeyField(key="name")
+    >>> field.map(None, Student("Sinan")).value
+    'Sinan'
     """
 
     def __init__(self, key=None, **kwargs):
