@@ -7,7 +7,7 @@ from functools import wraps
 from six import add_metaclass
 
 #: Defines the version of the `normalazy` library.
-__version__ = "0.0.3.dev"
+__version__ = "0.0.3"
 
 
 def iffnotnull(func):
