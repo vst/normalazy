@@ -1,5 +1,14 @@
-VERS: 2016-03-30 ------- release/0.0.2
+VERS: 2016-04-09 ------- release/0.0.3
 
+    * 2016-04-09 4f63d86 [release] Version bumped to 0.0.3 (vst@vsthost.com)
+    * 2016-04-09 710d015 [feature] Added cast method on KeyField for convenience purposes (vst@vsthost.com)
+    * 2016-04-09 8ece1f1 [test] Added doctest for property lookup using KeyField (vst@vsthost.com)
+    * 2016-03-30 c7c6b8a [chore] Ignoring `dist` directory (vst@vsthost.com)
+    * 2016-03-30 fc554cf [chore] Development version bumped to 0.0.3.dev (vst@vsthost.com)
+
+VERS: 2016-03-30 c760f81 release/0.0.2 (vst@vsthost.com)
+
+    * 2016-03-30 47ba5a1 [release] Change log updated (vst@vsthost.com)
     * 2016-03-30 05fcb28 [release] Version bumped to 0.0.2 (vst@vsthost.com)
     * 2016-03-30 49d1bb8 [docs] README updated (vst@vsthost.com)
     * 2016-03-30 25b1dd7 [docs] Initiated documentation (vst@vsthost.com)
